@@ -107,13 +107,59 @@ uint64_t do_puzzle_1(std::ifstream &file) {
 }
 
 uint64_t do_puzzle_2(std::ifstream &file) {
+    Grid grid{};
     std::string line;
 
     while (std::getline(file, line)) {
-        fmt::println("{}", line);
+        Row row{};
+
+        for (auto &c: line) {
+            row.emplace_back(c);
+        }
+
+        grid.emplace_back(row);
     }
 
-    return 0;
+    visited_tiles.clear();
+    cached_calls.clear();
+
+    uint64_t sum = 0;
+
+    std::vector<std::pair<Tile, Direction>> tiles{};
+
+    size_t width = grid.at(0).size();
+    size_t height = grid.size();
+
+    for (size_t i = 0; i < width; i++) {
+        tiles.emplace_back(std::make_pair<Tile, Direction>({0, i}, {1, 0}));
+        tiles.emplace_back(std::make_pair<Tile, Direction>({height - 1, i}, {-1, 0}));
+    }
+
+    for (size_t i = 0; i < height; i++) {
+        tiles.emplace_back(std::make_pair<Tile, Direction>({i, 0}, {0, 1}));
+        tiles.emplace_back(std::make_pair<Tile, Direction>({i, width - 1}, {0, -1}));
+    }
+
+    for (auto &tile: tiles) {
+        uint64_t result = 0;
+
+        visited_tiles.clear();
+        cached_calls.clear();
+
+        calculate_lit_tiles(grid, tile.first, tile.second);
+
+        for (auto &col: grid) {
+            for (auto &c: col) {
+                if (visited_tiles.contains({&col - &grid[0], &c - &col[0]})) {
+                    result++;
+                }
+            }
+        }
+
+        sum = std::max(sum, result);
+    }
+
+    return sum;
 }
 
 const TileDeflections tile_deflections = {
