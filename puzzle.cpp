@@ -4,7 +4,7 @@
 
 #include "puzzle.h"
 
-int puzzle_sample_1(const std::string &base_file_path) {
+uint64_t puzzle_sample_1(const std::string &base_file_path) {
     std::string file_path = fmt::format("{}/{}", base_file_path, "puzzle-input-sample-1.txt");
 
     std::ifstream file(file_path);
@@ -20,7 +20,7 @@ int puzzle_sample_1(const std::string &base_file_path) {
     return do_puzzle_1(file);
 }
 
-int puzzle_sample_2(const std::string &base_file_path) {
+uint64_t puzzle_sample_2(const std::string &base_file_path) {
     std::string file_path = fmt::format("{}/{}", base_file_path, "puzzle-input-sample-2.txt");
 
     std::ifstream file(file_path);
@@ -36,7 +36,7 @@ int puzzle_sample_2(const std::string &base_file_path) {
     return do_puzzle_2(file);
 }
 
-int puzzle_1(const std::string &base_file_path) {
+uint64_t puzzle_1(const std::string &base_file_path) {
     std::string file_path = fmt::format("{}/{}", base_file_path, "puzzle-input-1.txt");
 
     std::ifstream file(file_path);
@@ -52,7 +52,7 @@ int puzzle_1(const std::string &base_file_path) {
     return do_puzzle_1(file);
 }
 
-int puzzle_2(const std::string &base_file_path) {
+uint64_t puzzle_2(const std::string &base_file_path) {
     std::string file_path = fmt::format("{}/{}", base_file_path, "puzzle-input-2.txt");
 
     std::ifstream file(file_path);
@@ -68,7 +68,45 @@ int puzzle_2(const std::string &base_file_path) {
     return do_puzzle_2(file);
 }
 
-int do_puzzle_1(std::ifstream &file) {
+uint64_t do_puzzle_1(std::ifstream &file) {
+    Grid grid{};
+    std::string line;
+
+    while (std::getline(file, line)) {
+        Row row{};
+
+        for (auto &c: line) {
+            row.emplace_back(c);
+        }
+
+        grid.emplace_back(row);
+    }
+
+    visited_tiles.clear();
+    cached_calls.clear();
+
+    uint64_t result = calculate_lit_tiles(grid, {0, 0}, {0, 1});
+
+    uint64_t sum = 0;
+    for (auto &col: grid) {
+        for (auto &c: col) {
+            char ch = c;
+
+            if (visited_tiles.contains({&col - &grid[0], &c - &col[0]})) {
+                ch = 'X';
+                sum++;
+            }
+
+            fmt::print("{}", ch);
+        }
+
+        fmt::println("");
+    }
+
+    return sum;
+}
+
+uint64_t do_puzzle_2(std::ifstream &file) {
     std::string line;
 
     while (std::getline(file, line)) {
@@ -78,12 +116,101 @@ int do_puzzle_1(std::ifstream &file) {
     return 0;
 }
 
-int do_puzzle_2(std::ifstream &file) {
-    std::string line;
+const TileDeflections tile_deflections = {
+        {
+                '/',
+                {
+                        {{0, 1}, {{-1, 0}}}, // right -> up
+                        {{0,  -1}, {{1,  0}}}, // left -> down
+                        {{1, 0},  {{0, -1}}}, // down -> right
+                        {{-1, 0}, {{0,  1}}} // up -> right
+                }
+        },
+        {
+                '\\',
+                {
+                        {{0, 1}, {{1,  0}}}, // right -> down
+                        {{0,  -1}, {{-1, 0}}}, // left -> up
+                        {{1, 0},  {{0, 1}}}, // down -> right
+                        {{-1, 0}, {{0,  -1}}} // up -> left
+                }
+        },
+        {
+                '|',
+                {
+                        {{0, 1}, {{-1, 0}, {1, 0}}}, // right -> up & down
+                        {{0,  -1}, {{-1, 0}, {1, 0}}}, // left -> up & down
+                        {{1, 0},  {{1, 0}}}, // down -> down
+                        {{-1, 0}, {{-1, 0}}} // up -> up
+                }
+        },
+        {
+                '-',
+                {
+                        {{1, 0}, {{0,  1}, {0, -1}}}, // down -> left & right
+                        {{-1, 0},  {{0,  1}, {0, -1}}}, // up -> left & right
+                        {{0, -1}, {{0, -1}}}, // left -> left
+                        {{0,  1}, {{0,  1}}} // right -> right
+                }
+        },
+};
 
-    while (std::getline(file, line)) {
-        fmt::println("{}", line);
+std::map<Tile, int64_t> visited_tiles{};
+std::map<std::pair<Tile, Direction>, uint64_t> cached_calls{};
+
+uint64_t calculate_lit_tiles(const Grid &grid, const Tile &tile, const Direction &direction) {
+    uint64_t sum = 0;
+
+    auto start_col = grid.begin() + tile.first;
+    auto start_row = start_col->begin() + tile.second;
+
+    while (start_col <= grid.end() && start_col >= grid.begin() && start_row <= start_col->end() && start_row >= start_col->begin()) {
+        if (!visited_tiles.contains({start_col - grid.begin(), start_row - start_col->begin()})) {
+            sum++;
+            visited_tiles.insert({{start_col - grid.begin(), start_row - start_col->begin()}, 1});
+        } else {
+            visited_tiles[{start_col - grid.begin(), start_row - start_col->begin()}]++;
+        }
+
+        if (*start_row != '.') {
+            if (tile_deflections.contains(*start_row)) {
+                auto &deflections = tile_deflections.at(*start_row).at(direction);
+
+                for (auto &deflection: deflections) {
+                    Tile new_tile{start_col - grid.begin() + deflection.first,
+                                  start_row - start_col->begin() + deflection.second};
+
+                    if (cached_calls.contains({new_tile, deflection})) {
+//                        sum += cached_calls[{new_tile, deflection}];
+                        continue;
+                    } else {
+                        cached_calls.insert({{new_tile, deflection}, 0});
+                        uint64_t result = calculate_lit_tiles(grid, new_tile, deflection);
+
+                        cached_calls[{new_tile, deflection}] = result;
+
+                        sum += result;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        Tile new_tile = {start_col - grid.begin() + direction.first, start_row - start_col->begin() + direction.second};
+
+        if (new_tile.first >= grid.size()) {
+            break;
+        }
+
+        start_col = grid.begin() + new_tile.first;
+
+        if (new_tile.second >= start_col->size()) {
+            break;
+        }
+
+        start_row = start_col->begin() + new_tile.second;
     }
 
-    return 0;
+    return sum;
 }

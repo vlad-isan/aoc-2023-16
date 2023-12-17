@@ -19,16 +19,29 @@
 
 #include "fmt/core.h"
 
-int puzzle_sample_1(const std::string &base_file_path);
+using Direction = std::pair<int64_t, int64_t>;
+using Tile = std::pair<int64_t, int64_t>;
+using Row = std::vector<char>;
+using Grid = std::vector<Row>;
+using TileDeflections = std::map<char, std::map<Direction, std::vector<Direction>>>;
 
-int puzzle_sample_2(const std::string &base_file_path);
+extern const TileDeflections tile_deflections;
+extern std::map<std::pair<Tile, Direction>, uint64_t> cached_calls;
 
-int puzzle_1(const std::string &base_file_path);
+extern std::map<Tile, int64_t> visited_tiles;
 
-int puzzle_2(const std::string &base_file_path);
+uint64_t puzzle_sample_1(const std::string &base_file_path);
 
-int do_puzzle_1(std::ifstream &file);
+uint64_t puzzle_sample_2(const std::string &base_file_path);
 
-int do_puzzle_2(std::ifstream &file);
+uint64_t puzzle_1(const std::string &base_file_path);
+
+uint64_t puzzle_2(const std::string &base_file_path);
+
+uint64_t do_puzzle_1(std::ifstream &file);
+
+uint64_t do_puzzle_2(std::ifstream &file);
+
+uint64_t calculate_lit_tiles(const Grid &grid, const Tile &tile, const Direction &direction);
 
 #endif //PUZZLE_H
