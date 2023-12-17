@@ -88,6 +88,7 @@ uint64_t do_puzzle_1(std::ifstream &file) {
     uint64_t result = calculate_lit_tiles(grid, {0, 0}, {0, 1});
 
     uint64_t sum = 0;
+
     for (auto &col: grid) {
         for (auto &c: col) {
             char ch = c;
@@ -96,11 +97,7 @@ uint64_t do_puzzle_1(std::ifstream &file) {
                 ch = 'X';
                 sum++;
             }
-
-            fmt::print("{}", ch);
         }
-
-        fmt::println("");
     }
 
     return sum;
